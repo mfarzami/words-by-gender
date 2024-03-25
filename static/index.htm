@@ -4,23 +4,56 @@
         <title>Gendered Words</title>
         <script src="https://d3js.org/d3.v5.min.js"></script>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Madimi+One&display=swap" rel="stylesheet">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     </head>
     <style>
     body {
-        font-family: 'OCR A Std', monospace;
         font-size: 15px;
+
+        font-family: "Montserrat", sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
     }
     h1 {
-        font-size: 25px;
+        font-size: 60px;
+        margin: 20px;
+    }
+    p {
         margin: 20px;
     }
     .word {
         font-size: 30px;
         font-weight: 1000;
     }
+    .bebas-neue-regular {
+        font-family: "Bebas Neue", sans-serif;
+        font-weight: 400;
+        font-style: normal;
+    }
+    h1 {
+        font-size: 60px;
+        margin: 20px;
+    }
+    .gradient-text {
+        background: linear-gradient(to right, #ff2baa, #2b64ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        display: inline; /* Use inline or inline-block as needed */
+    }
     </style>
     <body>
-    <h1>What words do men and women say more?</h1>
+    <h1 class="bebas-neue-regular">Are words <span class="gradient-text">gendered?</span></h1>
+    <p>700 million Facebook messages from 2013 were categorized by gender, resulting in insights about which words men and women respectively use more frequently. Each word has three metrics associated with it: <strong>Male/MW</strong> - the number of times the word was used by men per million words, <strong>Female/MW</strong> - the number of times the word was used by women per million words, and <strong>LogOdds</strong> - the gender association of the word where negative is female and positive is male.</p>
     <svg id="svg" height="700" width="1200" style="background: #fff;" ></svg>
         <script>
         //svg setup
