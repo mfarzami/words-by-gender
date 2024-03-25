@@ -1,0 +1,259 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Gendered Words</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <style>
+    body {
+        font-family: 'OCR A Std', monospace;
+        font-size: 15px;
+    }
+    h1 {
+        font-size: 25px;
+        margin: 20px;
+    }
+    .word {
+        font-size: 30px;
+        font-weight: 1000;
+    }
+    </style>
+    <body>
+    <h1>What words do men and women say more?</h1>
+    <svg id="svg" height="700" width="1200" style="background: #fff;" ></svg>
+        <script>
+        //svg setup
+        var svg = d3.select('svg'),
+        margin = { top: 30, right: 100, bottom: 30, left:30 },
+        width = +svg.attr('width') - margin.left - margin.right,
+        height = +svg.attr('height') - margin.top - margin.bottom,
+        g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+        //load data
+        const makeChart = async function() {
+        const csv = await d3.csv("fisherMF_restructured.csv");
+
+        //here im filtering to take out symbols and just to the rly female or rly male ones (too many words otherwise)
+        const filtered = csv.filter(d => /^[A-Za-z]+$/.test(d.Word) && Math.abs(d.LogOdds) > 5);
+
+        //cleaning for NaN
+        const data = filtered.filter(d => !isNaN(parseFloat(d['Male/MW'])) && !isNaN(parseFloat(d['Female/MW'])));
+
+        //make scales
+        var xExtent = d3.extent(data, (d) => +d["Male/MW"]);
+        var yExtent = d3.extent(data, (d) => +d["Female/MW"]);
+
+        //log bc the unique words were condensed
+        var xScale = d3.scaleLog()
+            .range([0, width])
+            .domain(xExtent);
+        var yScale = d3.scaleLog()
+            .range([height, 0])
+            .domain(yExtent);
+
+        //make color scale for logodds
+        const pink = "#ff2baa";
+        const blue = "#2b64ff";
+
+        let lodds = data.map(d => d["LogOdds"]);
+        var colorScale = d3.scaleSequential()
+            .interpolator(d3.interpolateRgb(pink, blue))
+            .domain(d3.extent(lodds));
+
+        //tooltip to use on mouseover later
+        const tooltip = svg.append("g")
+            .style("opacity", 0);
+
+        const word = tooltip.append("text")
+            .attr("class", "word")
+            .attr("x", 20)
+            .attr("y", 30)
+            .attr("fill", "black"); 
+        
+        const tooltiptext = tooltip.append("text")
+            .attr("x", 20)
+            .attr("y", 60)
+            .attr("fill", "black"); 
+
+        data.forEach(d => {
+            //applying jitter bc of too much overlap
+            jitter = (Math.random()) * 20
+
+            //points
+            const dot = g.append("circle")
+                .attr("r", 5)
+                .attr("cx", xScale(+d['Male/MW']))
+                .attr("cy", yScale(+d['Female/MW']))
+                .style("fill", colorScale(+d['LogOdds']))
+                .style("opacity", .8);
+
+            //label direction/placeement
+            if (d.LogOdds > 0) {
+                labelx = 20+jitter;
+                labely = 20+jitter;
+            } else {
+                labelx = -20-jitter;
+                labely = -20-jitter;
+            }
+
+            //words
+            const label = g.append("text")
+                .attr("x", xScale(+d['Male/MW'])+labelx)
+                .attr("y", yScale(+d['Female/MW'])+labely)
+                .text(d['Word'])
+                .attr("text-anchor", "middle")
+                .attr("font-size", "12px")
+                .attr("fill", colorScale(+d['LogOdds']))
+
+            //chatgpt helped with function labelswitch()
+            function labelswitch() {
+                data.forEach(d => d.showlabel = false);
+                const now = new Date();
+                let start = Math.floor(Math.random() * data.length);
+                const labels = 25;
+                for (let i = 0; i < labels; i++) {
+                    const index = (start + i) % data.length;
+                    data[index].showlabel = true;
+                }
+
+                label.style("opacity", d.showlabel ? 1 : 0);
+            }
+
+            labelswitch();
+            setInterval(labelswitch, 2000);
+
+            //mouseover to show word
+            dot.on("mouseover", function () {
+                if (d.LogOdds > 0) {
+                    labelx = 20+jitter;
+                    labely = 20+jitter;
+                } else {
+                    labelx = -20-jitter;
+                    labely = -20-jitter;
+                }
+
+                //put the tooltip on the point
+                tooltip
+                    .style("opacity", 1);
+
+                word
+                    .text(d.Word)
+                    .style("fill", d3.color(colorScale(+d['LogOdds'])).darker(1))
+                    
+                tooltiptext
+                    .text(`Male/MW: ${d['Male/MW']}, Female/MW: ${d['Female/MW']}, LogOdds: ${d.LogOdds}`);
+
+                d3.select(this)
+                    .style("fill", d3.color(colorScale(+d['LogOdds'])).darker(1))
+                    .attr("r", 10); 
+                label
+                    .attr("font-size", "15px")
+                    .attr("fill", d3.color(colorScale(+d['LogOdds'])).darker(1))
+                    .style("opacity", 1); 
+
+            }).on("mouseout", function () {
+                d3.select(this)
+                    .style("fill", colorScale(+d['LogOdds']))
+                    .attr("r", 5);
+                label
+                    .attr("font-size", "12px")
+                    .attr("fill", colorScale(+d['LogOdds']))
+                    .style("opacity", d.showlabel ? 1 : 0);
+                tooltip
+                    .style("opacity", 0);
+            });
+
+            //zooming functionality        
+            let zoomExtent = [[0,0],[width,height]];
+            let translateExtent = [[0,0],[width, height]];
+            var plotZoom = d3.zoom()
+                            .extent(zoomExtent)
+                            .translateExtent(translateExtent)
+                            .scaleExtent([1,10])
+                            .on("zoom", function(event) {
+                                plotZoomed(event);
+                            });             
+                                
+            svg.call(plotZoom);
+
+            let transform = d3.zoomIdentity;
+            function plotZoomed() {
+                transform = d3.event.transform;
+                g.attr('transform', transform);
+                g.selectAll("circle")
+                    .attr("r", 5 / transform.k )
+                    .on("mouseover", function(event, d) {
+                        const newx = transform.applyX(xScale(+d['Male/MW']));
+                        const newy = transform.applyY(yScale(+d['Female/MW']));
+
+                        tooltip
+                            .style("opacity", 1)
+                            .attr("transform", `translate(${newx}, ${newy})`);
+
+                        d3.select(this).attr("r", 10 / transform.k); })
+                    .on("mouseout", function(d) {
+                        tooltip.style("opacity", 0);
+                        d3.select(this).attr("r", 5 / transform.k); })
+                g.selectAll("text")
+                    .style("font-size", (12 / transform.k) + "px");
+                console.log(transform)
+            }
+        });
+
+        //label axes directions
+        g.append("text")
+            .attr("x", width+50)
+            .attr("y", 0)
+            .attr("text-anchor", "middle")
+            .text("common");
+
+        g.append("text")
+            .attr("x", 50)
+            .attr("y", height+20)
+            .attr("text-anchor", "middle")
+            .text("niche");
+
+        //label gender directions
+        g.append("text")
+            .attr("x", width/3.3)
+            .attr("y", height/3.9)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-30," + (width / 3.3) + "," + (height / 3.9) + ")")
+            .text("women");
+        
+        g.append("text")
+            .attr("x", width/3.3 -4)
+            .attr("y", height/3.9 -20)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-30," + (width / 3.3) + "," + (height / 3.9) + ")")
+            .text("⬆");
+
+        g.append("text")
+            .attr("x", width/1.2)
+            .attr("y", height/1.3)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-30," + (width / 1.2) + "," + (height / 1.3) + ")")
+            .text("men");
+
+        g.append("text")
+            .attr("x", width/1.2 +4)
+            .attr("y", height/1.3 +20)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-30," + (width / 1.2) + "," + (height / 1.3) + ")")
+            .text("⬇");
+
+        //gender split line
+        g.append("line")
+            .attr("x1", width) 
+            .attr("y1", 0) 
+            .attr("x2", 100) 
+            .attr("y2", height) 
+            .attr("stroke", "black")
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "5,5");
+        }
+        makeChart();
+        </script>
+    </body>
+</html>
